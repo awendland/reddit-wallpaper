@@ -1,0 +1,325 @@
+#!/usr/bin/env python
+"""
+NAME
+
+    reddit-wallpaper
+
+SYNOPSIS
+
+    reddit-wallpaper [-h --help] [SUBREDDITS]
+
+DESCRIPTION
+
+    Download top images from subreddits and save them in a folder to be used as background images. Caches based off of image url MD5 hash.
+
+EXAMPLES
+
+    reddit-wallpaper CityPorn:top:10:week EarthPorn:new
+
+AUTHOR
+
+    Alex Wendland <me@alexwendland.com>
+    Rick Harris <rconradharris@gmail.com>
+"""
+import ConfigParser
+import argparse
+import collections
+import datetime
+import json
+import os
+import random
+import re
+import shutil
+import subprocess
+import sys
+import urllib2
+import urlparse
+import hashlib
+
+
+CONFIG_PATH = "~/.reddit-background.conf"
+DOWNLOAD_DIRECTORY = "~/reddit-backgrounds"
+RE_RESOLUTION_IN_TITLE = re.compile(".*\[\s*(\d+)\s*[xX]\s*(\d+)\s*\].*")
+DEFAULT_MIN_RESOLUTION = '1024x768'
+IMAGE_EXTENSIONS = set(['jpg', 'jpeg', 'png'])
+
+VERBOSE = False
+
+
+def set_verbose(verbose):
+    global VERBOSE
+    VERBOSE = verbose
+
+
+def log(msg):
+    if VERBOSE:
+        print >> sys.stderr, msg
+
+
+def _urlopen(url):
+    user_agent = "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11" 
+    opener = urllib2.build_opener()
+    opener.addheaders = [('User-Agent', user_agent)]
+    return opener.open(url)
+
+
+def _get_extension_from_url(url):
+    url_path = urlparse.urlparse(url).path
+    parts = url_path.rsplit('.', 1)
+    try:
+        return parts[1]
+    except IndexError:
+        return None
+
+def _download_image(image_url, existing_images):
+    dirname = os.path.expanduser(DOWNLOAD_DIRECTORY)
+
+    ext = _get_extension_from_url(image_url)
+    assert ext, "No extension found for image!"
+
+    basename = '.'.join([str(hashlib.md5(image_url).hexdigest()), ext])
+    filename = os.path.join(dirname, basename)
+
+    if basename not in existing_images:
+        log('Downloading {0} to {1}'.format(image_url, filename))
+        response = _urlopen(image_url)
+        try:
+            with open(filename, 'w') as f:
+                f.write(response.read())
+        finally:
+            response.close()
+
+        return filename
+
+    else:
+        log('{0} has already been downloaded as {1}'.format(image_url, filename))
+        return None
+
+
+def _setup_download_directory(should_clear = False):
+    dirname = os.path.expanduser(DOWNLOAD_DIRECTORY)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+        log('Created directory for downloaded images at "{0}"'.format(dirname))
+    elif should_clear:
+        shutil.rmtree(dirname)
+        os.makedirs(dirname)
+        log('Cleared downloaded files from "{0}"'.format(dirname))
+    else:
+        log('Images directory already exists at "{0}"'.format(dirname))
+
+
+class Post(object):
+    def __init__(self, subreddit, title, url):
+        self.subreddit = subreddit
+        self.title = title
+        self.url = url
+
+    def meets_resolution_criteria(self):
+        min_resolution = self.subreddit.info['min_resolution']
+
+        if not min_resolution:
+            return True
+
+        min_x, min_y = map(int, min_resolution.split('x'))
+
+        match = RE_RESOLUTION_IN_TITLE.match(self.title)
+
+        if not match:
+            return False
+
+        resolution_x = int(match.group(1))
+        resolution_y = int(match.group(2))
+
+        return resolution_x >= min_x and resolution_y >= min_y
+
+    def fetch_image_url(self):
+        url = self.url
+
+        ext = _get_extension_from_url(url)
+
+        if ext in IMAGE_EXTENSIONS:
+            return url
+        elif 'imgur.com' in url:
+            return '{0}.jpg'.format(url)
+        else:
+            return None
+
+
+class Subreddit(object):
+    def __init__(self, info, name, sort='top', limit=25, timeframe='week'):
+        self.info = info
+        self.name = name
+        self.sort = sort
+        self.limit = limit
+        self.timeframe = timeframe
+
+    def _fetch_posts(self):
+        url = 'http://reddit.com/r/{subreddit}/{sort}.json?t={timeframe}&limit={limit}'
+        url = url.format(subreddit=self.name,
+                         sort=self.sort,
+                         timeframe=self.timeframe,
+                         limit=self.limit)
+
+        response = _urlopen(url)
+
+        try:
+            data = json.loads(response.read())
+        finally:
+            response.close()
+
+        posts = []
+        for child in data['data']['children']:
+            data = child['data']
+            post = Post(self, data['title'], data['url'])
+            posts.append(post)
+
+        return posts
+
+    def fetch_image_urls(self):
+        posts = self._fetch_posts()
+
+        image_urls = []
+        for post in posts:
+            if post.meets_resolution_criteria():
+                image_url = post.fetch_image_url()
+                if image_url:
+                    image_urls.append(image_url)
+
+        log('Found {0} candidate images from {1}'.format(len(image_urls),
+                                                         self.name))
+        return image_urls
+
+    @classmethod
+    def create_from_token(cls, info, token):
+        token_parts = token.split(':')
+
+        name = token_parts[0]
+
+        args = ('name', 'sort', 'limit', 'timeframe')
+        ddict = {}
+        for arg, value in zip(args, token_parts):
+            ddict[arg] = value
+        return cls(info, **ddict)
+
+    def __repr__(self):
+        return '<Subreddit r/{0}>'.format(self.name)
+
+
+def _read_config_file(info):
+    path = os.path.expanduser(CONFIG_PATH)
+
+    if not os.path.exists(path):
+        return
+
+    def parse_subreddit_tokens(info):
+        tokens = map(lambda x: x.strip(),
+                     config.get('default', 'subreddits').split(','))
+
+        if tokens:
+            info['subreddit_tokens'] = tokens
+
+    def parse_min_resolution(info):
+        try:
+            min_resolution = config.get('default', 'min_resolution')
+        except ConfigParser.NoOptionError:
+            pass
+        else:
+            info['min_resolution'] = min_resolution
+
+    config = ConfigParser.ConfigParser()
+    with open(path) as f:
+        config.readfp(f)
+
+    if not info.get('subreddit_tokens'):
+        parse_subreddit_tokens(info)
+
+    if not info.get('min_resolution'):
+        parse_min_resolution(info)
+
+
+def _handle_cli_options(info):
+    parser = argparse.ArgumentParser(
+        description='Set desktop background image from reddit')
+    parser.add_argument('subreddits', metavar='SUBREDDITS', nargs='*',
+            help='A list of subreddits')
+    parser.add_argument('--min-resolution',
+            help='Minimum resolution allowed for image'
+                 ' (default: 1024x768)')
+    parser.add_argument('--verbose', action='store_true',
+            help='Prints addition information to stderr')
+    parser.add_argument('--clear', action='store_true',
+            help='Clear the currently downloaded images')
+    parser.add_argument('--url',
+            help='Use image from this URL')
+
+    args = parser.parse_args()
+
+    set_verbose(args.verbose)
+
+    if args.url:
+        info['url']  = args.url
+
+    if args.min_resolution:
+        info['min_resolution'] = args.min_resolution
+
+    if args.subreddits:
+        info['subreddit_tokens'] = args.subreddits
+
+    info['clear'] = args.clear
+
+
+def _use_defaults(info):
+    if not info.get('subreddit_tokens'):
+        # CityPorn seems like a pretty good default
+        info['subreddit_tokens'] = ['CityPorn']
+
+    if not info.get('min_resolution'):
+        info['min_resolution'] = DEFAULT_MIN_RESOLUTION
+
+    if not info.get('clear'):
+        info['clear'] = False
+
+
+def main():
+    # Configuration override chain:
+    #   CLI options overrides config file
+    #   config file overrides defaults
+    info = collections.defaultdict(dict)
+
+    _handle_cli_options(info)
+    _read_config_file(info)
+    _use_defaults(info)
+
+    _setup_download_directory(info['clear'])
+
+    # Collect requested subreddits
+    subreddits = []
+    for token in info['subreddit_tokens']:
+        subreddit = Subreddit.create_from_token(info, token)
+        subreddits.append(subreddit)
+
+    # Accumulate images URLs across subreddits
+    image_urls = []
+    for subreddit in subreddits:
+        urls = subreddit.fetch_image_urls()
+        image_urls.extend(urls)
+
+    # List which files already have been downloaded
+    existing_images = []
+    download_dir = os.path.expanduser(DOWNLOAD_DIRECTORY)
+    if os.path.exists(download_dir):
+        from os import listdir
+        from os.path import isfile, join
+        existing_images = [ f for f in listdir(download_dir) if isfile(join(download_dir,f)) ]
+
+    # Download available images
+    for image_url in image_urls:
+        try:
+            filename = _download_image(image_url, existing_images)
+        except urllib2.HTTPError:
+            continue  # Try next image...
+
+
+if __name__ == "__main__":
+    main()
