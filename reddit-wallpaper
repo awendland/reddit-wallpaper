@@ -37,8 +37,8 @@ import urlparse
 import hashlib
 
 
-CONFIG_PATH = "~/.reddit-background.conf"
-DOWNLOAD_DIRECTORY = "~/reddit-backgrounds"
+CONFIG_PATH = "~/.reddit-wallpaper.conf"
+DEFAULT_DOWNLOAD_DIRECTORY = "~/reddit-wallpaper"
 RE_RESOLUTION_IN_TITLE = re.compile(".*\[\s*(\d+)\s*[xX]\s*(\d+)\s*\].*")
 DEFAULT_MIN_RESOLUTION = '1024x768'
 IMAGE_EXTENSIONS = set(['jpg', 'jpeg', 'png'])
@@ -71,9 +71,7 @@ def _get_extension_from_url(url):
     except IndexError:
         return None
 
-def _download_image(image_url, existing_images):
-    dirname = os.path.expanduser(DOWNLOAD_DIRECTORY)
-
+def _download_image(dirname, image_url, existing_images):
     ext = _get_extension_from_url(image_url)
     assert ext, "No extension found for image!"
 
@@ -89,19 +87,22 @@ def _download_image(image_url, existing_images):
         finally:
             response.close()
 
-        return filename
-
     else:
         log('{0} has already been downloaded as {1}'.format(image_url, filename))
-        return None
+
+    return {
+        'filename': filename,
+        'basename': basename,
+        'was_cached': basename in existing_images
+    }
 
 
-def _setup_download_directory(should_clear = False):
-    dirname = os.path.expanduser(DOWNLOAD_DIRECTORY)
+def _setup_download_directory(info):
+    dirname = os.path.expanduser(info['download_dir'])
     if not os.path.exists(dirname):
         os.makedirs(dirname)
         log('Created directory for downloaded images at "{0}"'.format(dirname))
-    elif should_clear:
+    elif info['clear']:
         shutil.rmtree(dirname)
         os.makedirs(dirname)
         log('Cleared downloaded files from "{0}"'.format(dirname))
@@ -227,6 +228,14 @@ def _read_config_file(info):
         else:
             info['min_resolution'] = min_resolution
 
+    def parse_download_dir(info):
+        try:
+            download_dir = config.get('default', 'download_dir')
+        except ConfigParser.NoOptionError:
+            pass
+        else:
+            info['download_dir'] = download_dir
+
     config = ConfigParser.ConfigParser()
     with open(path) as f:
         config.readfp(f)
@@ -237,6 +246,9 @@ def _read_config_file(info):
     if not info.get('min_resolution'):
         parse_min_resolution(info)
 
+    if not info.get('download_dir'):
+        parse_download_dir(info)
+
 
 def _handle_cli_options(info):
     parser = argparse.ArgumentParser(
@@ -245,20 +257,18 @@ def _handle_cli_options(info):
             help='A list of subreddits')
     parser.add_argument('--min-resolution',
             help='Minimum resolution allowed for image'
-                 ' (default: 1024x768)')
-    parser.add_argument('--verbose', action='store_true',
-            help='Prints addition information to stderr')
+                 ' (default: {0})'.format(DEFAULT_MIN_RESOLUTION))
+    parser.add_argument('--download-dir',
+            help='Directory to download images to'
+                 ' (default: {0})'.format(DEFAULT_DOWNLOAD_DIRECTORY))
     parser.add_argument('--clear', action='store_true',
             help='Clear the currently downloaded images')
-    parser.add_argument('--url',
-            help='Use image from this URL')
+    parser.add_argument('--verbose', action='store_true',
+            help='Prints addition information to stderr')
 
     args = parser.parse_args()
 
     set_verbose(args.verbose)
-
-    if args.url:
-        info['url']  = args.url
 
     if args.min_resolution:
         info['min_resolution'] = args.min_resolution
@@ -280,6 +290,9 @@ def _use_defaults(info):
     if not info.get('clear'):
         info['clear'] = False
 
+    if not info.get('download_dir'):
+        info['download_dir'] = DEFAULT_DOWNLOAD_DIRECTORY
+
 
 def main():
     # Configuration override chain:
@@ -291,7 +304,7 @@ def main():
     _read_config_file(info)
     _use_defaults(info)
 
-    _setup_download_directory(info['clear'])
+    _setup_download_directory(info)
 
     # Collect requested subreddits
     subreddits = []
@@ -307,18 +320,23 @@ def main():
 
     # List which files already have been downloaded
     existing_images = []
-    download_dir = os.path.expanduser(DOWNLOAD_DIRECTORY)
+    download_dir = os.path.expanduser(info['download_dir'])
     if os.path.exists(download_dir):
-        from os import listdir
-        from os.path import isfile, join
-        existing_images = [ f for f in listdir(download_dir) if isfile(join(download_dir,f)) ]
+        existing_images = [ f for f in os.listdir(download_dir) if os.path.isfile(os.path.join(download_dir, f)) ]
 
     # Download available images
+    current_images = []
     for image_url in image_urls:
         try:
-            filename = _download_image(image_url, existing_images)
+            image_download = _download_image(download_dir, image_url, existing_images)
+            current_images.append(image_download['basename'])
         except urllib2.HTTPError:
             continue  # Try next image...
+
+    # Remove cached files that aren't on the subreddit results anymore
+    for file_to_delete in set(existing_images) - set(current_images):
+        os.remove(os.path.join(download_dir, file_to_delete))
+        log("Removing expired file \"{0}\"".format(file_to_delete))
 
 
 if __name__ == "__main__":

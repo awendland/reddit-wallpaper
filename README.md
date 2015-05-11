@@ -1,71 +1,72 @@
-reddit-background
+reddit-wallpaper*
 =================
 
-Set your Mac OS X desktop background to images pulled from [Reddit](https://reddit.com)
+Download pictures from from various subreddits of [Reddit](https://reddit.com) in order to be cycled through as desktop wallpapers.
 
-![Screenshot](https://raw.githubusercontent.com/rconradharris/reddit-background/master/screenshot.jpg)
+* This program is heavily based off of [reddit-background](https://github.com/rconradharris/reddit-background) by [@rconradharris](https://github.com/rconradharris).
+
+![Screenshot](screenshot.jpg?raw=true)
 
 Features
 --------
 
-- Supports multiple monitors
 - Handles multiple subreddits
 - Image resolution filtering ensures your backgrounds are always beautiful
 - Flexible sorting lets you choose the quality of images it downloads
-- Can pick images that match the current season
 
 Try It
 ------
 
-1.  Download the project; or clone the repo using [git](http://git-scm.com/),
-    like:
+1.  Download the project; or clone the repo using [git](http://git-scm.com/), like:
 
-        git clone https://github.com/rconradharris/reddit-backgrounds.git
+        git clone https://github.com/awendland/reddit-wallpaper.git
 
 2.  Run it:
 
-        cd reddit-background
-        ./reddit-background
+        cd reddit-wallpaper
+        ./reddit-wallpaper
 
-The default is to use images based on the current season (`{seasonal}`), so
-for example, if it’s November, the images will be pulled from
-    [/r/AutumnPorn](https://reddit.com/r/AutumnPorn).
+a.  reddit-wallpaper will download the last week's top voted images with a minimum resolution of 1024x768 (though most are higher red), to `~/reddit-wallpaper`.
+
+3.  You can now set your desktop wallpaper to cycle through the images in this folder
+
+    * For OSX: [About.com: Personalize Your Mac's Desktop Wallpaper](http://macs.about.com/od/switchersnewusers/qt/wallpaper.htm)
+    * For Windows: [Microsoft.com: Create a desktop background slide show](http://windows.microsoft.com/en-us/windows7/create-a-desktop-background-slide-show)
+
+The default is to use images from [/r/CityPorn](https://reddit.com/r/CityPorn)
 
 Install It
 ----------
 
-The easiest way to install reddit-background is to copy it to
+The easiest way to install reddit-wallpaper is to copy it to
 `/usr/local/bin`. To do this, run this command:
 
-    cp reddit-background /usr/local/bin
+    cp reddit-wallpaper /usr/local/bin
+
+Now you can run `./reddit-wallpaper` whenever you would like to update the batch of images, or you can [automate it](#automate-it)
 
 Configure It
 ------------
 
-If you'd like to customize reddit-background so that it chooses images images
-from different subreddits, you can provide a configuration file at
-`~/.reddit-background.conf`. Here’s a sample to get you started:
+If you'd like to customize reddit-background so that it chooses images images from different subreddits, you can provide a configuration file at `~/.reddit-wallpaper.conf`. Here’s a sample to get you started:
 
     # Default is used across all monitors, unless overriden with a more
     # specific configuration
     [default]
 
-    # {seasonal} will choose the correct subreddit based on the current season
-    subreddits={seasonal}
+    # CityPorn has gorgeous cityscape photos, and BeachPorn has enviable beach/sand/wave photos
+    subreddits=CityPorn,BeachPorn
 
     # Filter out any images with resolution below this
     min_resolution=1280x1024
 
-    # Desktop 2 overrides the defaults to use images pulled from r/CarPorn and
-    # r/EarthPorn
-    [desktop2]
-    subreddits=CarPorn,EarthPorn
+    # Directory in which to download images
+    download_dir=~/reddit-wallpaper
 
 Automate It
 -----------
 
-Once you have a configuration you like, you can set up reddit-background to
-rotate your background daily.
+Once you have a configuration you like, you can set up reddit-wallpaper to query for new images weekly.
 
 There are a number of ways to do this, but one way is to add it to your *crontab*.
 
@@ -75,18 +76,16 @@ To do this, open up your crontab in an editor:
 
 And once you’ve done that, add the following line:
 
-    0 9 * * * /usr/local/bin/reddit-background
+    0 0 * * 0 /usr/local/bin/reddit-wallpaper
 
-Save the file and quit the editor. Now your background will rotate daily at
-9:00 in the morning.
+Save the file and quit the editor. Now your wallpaper stash will update weekly at 12:00 am on Sunday. The update will download new images from the subreddits and remove any old images from the download directory.
 
 Advanced
 --------
 
 ### Subreddit Sort Options
 
-By default, when you specify a subreddit, you are selecting the top 25 posts
-over the last week.
+By default, when you specify a subreddit, you are selecting the top 25 posts over the last week.
 
 You can customize the sort by using the following format:
 
@@ -94,58 +93,43 @@ You can customize the sort by using the following format:
 
 | Argument  | Possible Values                                        | Default |
 |-----------|--------------------------------------------------------|---------|
-| subreddit | A subreddit or {seasonal}                              | *None*  |
-| sort      | contraversial, gilded, hot, new, promoted, rising, top | top     |
+| subreddit | A subreddit                                            | *None*  |
+| sort      | controversial, gilded, hot, new, promoted, rising, top | top     |
 | limit     | An integer                                             | 25      |
 | timeframe | all, day, hour, month, week, year                      | week    |
 
-So, for example, if you want to only include the 5 newest posts from
-[/r/EarthPorn](https://reddit.com/r/EarthPorn), you would write it as:
+So, for example, if you want to only include the 5 newest posts from [/r/EarthPorn](https://reddit.com/r/EarthPorn), you would write it as:
 
     EarthPorn:new:5
 
-Or if you’d like to include the top 10 posts over the year for
-[/r/CityPorn](https://reddit.com/r/CityPorn), you’d write it as:
+Or if you’d like to include the top 10 posts over the year for [/r/CityPorn](https://reddit.com/r/CityPorn), you’d write it as:
 
     CityPorn:top:10:year
 
 **NOTE:** Only the `top` and `controversial` sort methods use the `timeframe` option.
 
-### Dynamic Subreddits
-
-reddit-background can dynamically pull images from the correct subreddit based
-on some criteria.
-
-These are called 'dynamic subreddits' and they are specified just like normal
-except they are enclosed in curly-brackets.
-
-Currently the only one included is `{seasonal}` which will choose from amongst
-[/r/WinterPorn](https://reddit.com/r/WinterPorn),
-[/r/SpringPorn](https://reddit.com/r/SpringPorn),
-[/r/SummerPorn](https://reddit.com/r/SummerPorn), or
-[/r/AutumnPorn](https://reddit.com/r/AutumnPorn) based on the current season
-(in the northern hemisphere).
-
 ### Command-Line Usage
 
-In addition to specifying a configuration file, you can also customize
-reddit-background directly from the command-line.
+In addition to specifying a configuration file, you can also customize reddit-wallpaper directly from the command-line.
 
-The arguments represent each subreddit you would like to pull images from. For
-example, to pull seasonal images and images from
-[/r/CarPorn](https://reddit.com/r/CarPorn), you would run:
+The arguments represent each subreddit you would like to pull images from. For example, to pull city images and images from [/r/CarPorn](https://reddit.com/r/CarPorn), you would run:
 
-    reddit-background {seasonal} CarPorn
+    reddit-wallpaper CityPorn CarPorn
 
-If you have a multi-monitor setup, you can also set the background for a
-single monitor using the `--desktop` option like:
+If you want to clear all currently downloaded images and redownload everything you would run:
 
-    reddit-background --desktop 1 BeachPorn
+    reddit-wallpaper --clear
 
-This will set the background on desktop 1 to one of the 5 hottest posts from
-[/r/BeachPorn](https://reddit.com/r/BeachPorn).
+You can stipulate where to download the images to by using:
 
-If you already know the URL of the image you’d like to use, you can use the
-`--url` option to automatically download it and set it the background like::
+    reddit-wallpaper --download-dir "~/some-other-directory"
 
-    reddit-background --url http://www.visit2ethiopia.com/images/Addis%20Ababa01.jpg
+If you'd like to adjust the minimum resolution of the images:
+
+    reddit-wallpaper --min-resolution 1920x1080
+
+### Attribution and License
+
+This program is heavily based off of the work done by [@rconradharris](https://github.com/rconradharris) for [reddit-background](https://github.com/rconradharris/reddit-background). This program was created because the desired use case was not covered by reddit-background, particularly that only one spaces background at a time could be changed. Furthermore, OSX provides a simple mechanism for rotating through wallpaper images in a folder, so this program was created to integrate with that existing OS functionality.
+
+This program is licensed under the MIT License, which can be viewed at [LICENSE.txt](LICENSE.txt?raw=true)
