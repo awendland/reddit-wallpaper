@@ -1,7 +1,7 @@
 reddit-wallpaper*
 =================
 
-Download pictures from from various subreddits of [Reddit](https://reddit.com) in order to be cycled through as desktop wallpapers.
+Download pictures from from various subreddits ([Reddit](https://reddit.com)) to be cycled through as desktop wallpapers.
 
 * This program is heavily based off of [reddit-background](https://github.com/rconradharris/reddit-background) by [@rconradharris](https://github.com/rconradharris).
 
@@ -10,6 +10,7 @@ Download pictures from from various subreddits of [Reddit](https://reddit.com) i
 Features
 --------
 
+- Integrates with OS folder-based background rotation
 - Handles multiple subreddits
 - Image resolution filtering ensures your backgrounds are always beautiful
 - Flexible sorting lets you choose the quality of images it downloads
@@ -26,14 +27,14 @@ Try It
         cd reddit-wallpaper
         ./reddit-wallpaper
 
-a.  reddit-wallpaper will download the last week's top voted images with a minimum resolution of 1024x768 (though most are higher red), to `~/reddit-wallpaper`.
+3.  reddit-wallpaper will download the last week's top voted images with a minimum resolution of 1024x768 (though most are higher red), to `~/reddit-wallpaper`.
 
-3.  You can now set your desktop wallpaper to cycle through the images in this folder
+4.  You can now set your desktop wallpaper to cycle through the images in this folder
 
     * For OSX: [About.com: Personalize Your Mac's Desktop Wallpaper](http://macs.about.com/od/switchersnewusers/qt/wallpaper.htm)
     * For Windows: [Microsoft.com: Create a desktop background slide show](http://windows.microsoft.com/en-us/windows7/create-a-desktop-background-slide-show)
 
-The default is to use images from [/r/CityPorn](https://reddit.com/r/CityPorn)
+The default is to use images from [/r/CityPorn](https://reddit.com/r/CityPorn).
 
 Install It
 ----------
@@ -43,7 +44,7 @@ The easiest way to install reddit-wallpaper is to copy it to
 
     cp reddit-wallpaper /usr/local/bin
 
-Now you can run `./reddit-wallpaper` whenever you would like to update the batch of images, or you can [automate it](#automate-it)
+Now you can run `./reddit-wallpaper` whenever you would like to update the batch of images, or you can [automate it](#automate-it).
 
 Configure It
 ------------
@@ -130,6 +131,6 @@ If you'd like to adjust the minimum resolution of the images:
 
 ### Attribution and License
 
-This program is heavily based off of the work done by [@rconradharris](https://github.com/rconradharris) for [reddit-background](https://github.com/rconradharris/reddit-background). This program was created because the desired use case was not covered by reddit-background, particularly that only one spaces background at a time could be changed. Furthermore, OSX provides a simple mechanism for rotating through wallpaper images in a folder, so this program was created to integrate with that existing OS functionality.
+This program is heavily based off of the work done by [@rconradharris](https://github.com/rconradharris) for [reddit-background](https://github.com/rconradharris/reddit-background). This program was created because the desired use case was not covered by reddit-background, particularly that the background could only be changed for one of the user's spaces. Furthermore, OSX has a built in mechanism for rotating through wallpaper images in a folder, so this program was created to integrate with that existing OS functionality.
 
-This program is licensed under the MIT License, which can be viewed at [LICENSE.txt](LICENSE.txt?raw=true)
+This program is licensed under the MIT License, which can be viewed at [LICENSE.txt](LICENSE.txt?raw=true).
