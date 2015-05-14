@@ -3,7 +3,7 @@ reddit-wallpaper*
 
 Download pictures from from various subreddits ([Reddit](https://reddit.com)) to be cycled through as desktop wallpapers.
 
-* This program is heavily based off of [reddit-background](https://github.com/rconradharris/reddit-background) by [@rconradharris](https://github.com/rconradharris).
+\* This program is heavily based off of [reddit-background](https://github.com/rconradharris/reddit-background) by [@rconradharris](https://github.com/rconradharris).
 
 ![Screenshot](screenshot.jpg?raw=true)
 
