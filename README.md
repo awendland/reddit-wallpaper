@@ -77,9 +77,9 @@ To do this, open up your crontab in an editor:
 
 And once you’ve done that, add the following line:
 
-    0 0 * * 0 /usr/local/bin/reddit-wallpaper
+    0 0 * * * /usr/local/bin/reddit-wallpaper
 
-Save the file and quit the editor. Now your wallpaper stash will update weekly at 12:00 am on Sunday. The update will download new images from the subreddits and remove any old images from the download directory.
+Save the file and quit the editor. Now your wallpaper stash will update every day at 12:00 am. The update will download new images from the subreddits and remove any old images from the download directory.
 
 Advanced
 --------
