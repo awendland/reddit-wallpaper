@@ -24,13 +24,10 @@ AUTHOR
 import ConfigParser
 import argparse
 import collections
-import datetime
 import json
 import os
-import random
 import re
 import shutil
-import subprocess
 import sys
 import urllib2
 import urlparse
