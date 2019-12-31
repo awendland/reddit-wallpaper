@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 NAME
 
@@ -21,7 +21,7 @@ AUTHOR
     Alex Wendland <me@alexwendland.com>
     Rick Harris <rconradharris@gmail.com>
 """
-import ConfigParser
+import configparser
 import argparse
 import collections
 import json
@@ -29,8 +29,8 @@ import os
 import re
 import shutil
 import sys
-import urllib2
-import urlparse
+import urllib.request, urllib.error, urllib.parse
+import urllib.parse
 import hashlib
 
 
@@ -50,18 +50,18 @@ def set_verbose(verbose):
 
 def log(msg):
     if VERBOSE:
-        print >> sys.stderr, msg
+        print(msg, file=sys.stderr)
 
 
 def _urlopen(url):
     user_agent = "Mozilla/5.0 (X11; U; Linux i686) Gecko/20071127 Firefox/2.0.0.11" 
-    opener = urllib2.build_opener()
+    opener = urllib.request.build_opener()
     opener.addheaders = [('User-Agent', user_agent)]
     return opener.open(url)
 
 
 def _get_extension_from_url(url):
-    url_path = urlparse.urlparse(url).path
+    url_path = urllib.parse.urlparse(url).path
     parts = url_path.rsplit('.', 1)
     try:
         return parts[1]
@@ -72,14 +72,14 @@ def _download_image(dirname, image_url, existing_images):
     ext = _get_extension_from_url(image_url)
     assert ext, "No extension found for image!"
 
-    basename = '.'.join([str(hashlib.md5(image_url).hexdigest()), ext])
+    basename = '.'.join([str(hashlib.md5(image_url.encode()).hexdigest()), ext])
     filename = os.path.join(dirname, basename)
 
     if basename not in existing_images:
         log('Downloading {0} to {1}'.format(image_url, filename))
         response = _urlopen(image_url)
         try:
-            with open(filename, 'w') as f:
+            with open(filename, 'wb') as f:
                 f.write(response.read())
         finally:
             response.close()
@@ -119,7 +119,7 @@ class Post(object):
         if not min_resolution:
             return True
 
-        min_x, min_y = map(int, min_resolution.split('x'))
+        min_x, min_y = list(map(int, min_resolution.split('x')))
 
         match = RE_RESOLUTION_IN_TITLE.match(self.title)
 
@@ -211,8 +211,7 @@ def _read_config_file(info):
         return
 
     def parse_subreddit_tokens(info):
-        tokens = map(lambda x: x.strip(),
-                     config.get('default', 'subreddits').split(','))
+        tokens = [x.strip() for x in config.get('default', 'subreddits').split(',')]
 
         if tokens:
             info['subreddit_tokens'] = tokens
@@ -220,7 +219,7 @@ def _read_config_file(info):
     def parse_min_resolution(info):
         try:
             min_resolution = config.get('default', 'min_resolution')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             pass
         else:
             info['min_resolution'] = min_resolution
@@ -228,14 +227,14 @@ def _read_config_file(info):
     def parse_download_dir(info):
         try:
             download_dir = config.get('default', 'download_dir')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             pass
         else:
             info['download_dir'] = download_dir
 
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     with open(path) as f:
-        config.readfp(f)
+        config.read_file(f)
 
     if not info.get('subreddit_tokens'):
         parse_subreddit_tokens(info)
@@ -281,9 +280,6 @@ def _use_defaults(info):
         # CityPorn seems like a pretty good default
         info['subreddit_tokens'] = ['CityPorn']
 
-    if not info.get('min_resolution'):
-        info['min_resolution'] = DEFAULT_MIN_RESOLUTION
-
     if not info.get('clear'):
         info['clear'] = False
 
@@ -327,7 +323,7 @@ def main():
         try:
             image_download = _download_image(download_dir, image_url, existing_images)
             current_images.append(image_download['basename'])
-        except urllib2.HTTPError:
+        except urllib.error.HTTPError:
             continue  # Try next image...
 
     # Remove cached files that aren't on the subreddit results anymore
